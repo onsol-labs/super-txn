@@ -1,0 +1,16 @@
+{
+  "name": "super_txn",
+  "scripts": {
+    "start": "tsx src/main.ts"
+  },
+  "dependencies": {
+    "@solana/spl-token": "^0.3.6",
+    "@solana/web3.js": "^1",
+    "dotenv": "^16.4.5"
+  },
+  "devDependencies": {
+    "@types/bs58": "^4.0.4",
+    "tsx": "*",
+    "typescript": "*"
+  }
+}

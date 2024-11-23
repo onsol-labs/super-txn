@@ -1,0 +1,18 @@
+[toolchain]
+
+[features]
+resolution = true
+skip-lint = false
+
+[programs.localnet]
+super_txn = "C5tcDT7wb5PGNy6owoze5KofLN4XQw4CmFAGuba7a5My"
+
+[registry]
+url = "https://api.apr.dev"
+
+[provider]
+cluster = "Localnet"
+wallet = "~/.config/solana/id.json"
+
+[scripts]
+test = "npx mocha --node-option require=ts-node/register --extension ts -t 1000000 tests/super-txn.ts"

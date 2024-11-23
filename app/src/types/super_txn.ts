@@ -1,0 +1,1577 @@
+export type SuperTxn = {
+  "version": "0.1.0",
+  "name": "super_txn",
+  "instructions": [
+    {
+      "name": "txnBufferCreate",
+      "docs": [
+        "Create a transaction buffer account."
+      ],
+      "accounts": [
+        {
+          "name": "transactionBuffer",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "creator",
+          "isMut": false,
+          "isSigner": true,
+          "docs": [
+            "The member of the multisig that is creating the transaction."
+          ]
+        },
+        {
+          "name": "rentPayer",
+          "isMut": true,
+          "isSigner": true,
+          "docs": [
+            "The payer for the transaction account rent."
+          ]
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": "TransactionBufferCreateArgs"
+          }
+        }
+      ]
+    },
+    {
+      "name": "txnBufferClose",
+      "docs": [
+        "Close a transaction buffer account."
+      ],
+      "accounts": [
+        {
+          "name": "transactionBuffer",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "creator",
+          "isMut": false,
+          "isSigner": true,
+          "docs": [
+            "The member of the multisig that created the TransactionBuffer."
+          ]
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "txnBufferExtend",
+      "docs": [
+        "Extend a transaction buffer account."
+      ],
+      "accounts": [
+        {
+          "name": "transactionBuffer",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "creator",
+          "isMut": false,
+          "isSigner": true,
+          "docs": [
+            "The member of the multisig that created the TransactionBuffer."
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": "TransactionBufferExtendArgs"
+          }
+        }
+      ]
+    },
+    {
+      "name": "superTransactionCreate",
+      "docs": [
+        "Create a new super transaction."
+      ],
+      "accounts": [
+        {
+          "name": "transaction",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "creator",
+          "isMut": false,
+          "isSigner": true,
+          "docs": [
+            "The member of the multisig that is creating the transaction."
+          ]
+        },
+        {
+          "name": "rentPayer",
+          "isMut": true,
+          "isSigner": true,
+          "docs": [
+            "The payer for the transaction account rent."
+          ]
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": "SuperTransactionCreateArgs"
+          }
+        }
+      ]
+    },
+    {
+      "name": "superTransactionCreateFromBuffer",
+      "docs": [
+        "Create a new super transaction from a completed transaction buffer.",
+        "Finalized buffer hash must match `final_buffer_hash`"
+      ],
+      "accounts": [
+        {
+          "name": "superTransactionCreate",
+          "accounts": [
+            {
+              "name": "transaction",
+              "isMut": true,
+              "isSigner": false
+            },
+            {
+              "name": "creator",
+              "isMut": false,
+              "isSigner": true,
+              "docs": [
+                "The member of the multisig that is creating the transaction."
+              ]
+            },
+            {
+              "name": "rentPayer",
+              "isMut": true,
+              "isSigner": true,
+              "docs": [
+                "The payer for the transaction account rent."
+              ]
+            },
+            {
+              "name": "systemProgram",
+              "isMut": false,
+              "isSigner": false
+            }
+          ]
+        },
+        {
+          "name": "transactionBuffer",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "creator",
+          "isMut": true,
+          "isSigner": true
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": "SuperTransactionCreateArgs"
+          }
+        }
+      ]
+    },
+    {
+      "name": "superTransactionExecute",
+      "docs": [
+        "Execute a super transaction.",
+        "The transaction must be `Approved`."
+      ],
+      "accounts": [
+        {
+          "name": "transaction",
+          "isMut": true,
+          "isSigner": false,
+          "docs": [
+            "The transaction to execute."
+          ]
+        },
+        {
+          "name": "creator",
+          "isMut": true,
+          "isSigner": true
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "superTransactionAccountsClose",
+      "docs": [
+        "Closes a `SuperTransaction`"
+      ],
+      "accounts": [
+        {
+          "name": "transaction",
+          "isMut": true,
+          "isSigner": false,
+          "docs": [
+            "SuperTransaction corresponding to the `proposal`."
+          ]
+        },
+        {
+          "name": "creator",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": []
+    }
+  ],
+  "accounts": [
+    {
+      "name": "transactionBuffer",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "creator",
+            "docs": [
+              "txn buffer creator"
+            ],
+            "type": "publicKey"
+          },
+          {
+            "name": "bufferIndex",
+            "docs": [
+              "Index to seed address derivation"
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "finalBufferHash",
+            "docs": [
+              "Hash of the final assembled transaction message."
+            ],
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "finalBufferSize",
+            "docs": [
+              "The size of the final assembled transaction message."
+            ],
+            "type": "u16"
+          },
+          {
+            "name": "buffer",
+            "docs": [
+              "The buffer of the transaction message."
+            ],
+            "type": "bytes"
+          }
+        ]
+      }
+    },
+    {
+      "name": "superTransaction",
+      "docs": [
+        "Stores data required for tracking the voting and execution status of a super transaction.",
+        "Super transaction is a transaction wraps arbitrary Solana instructions, typically calling into other Solana programs."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "creator",
+            "docs": [
+              "SuperTransaction creator"
+            ],
+            "type": "publicKey"
+          },
+          {
+            "name": "ephemeralSignerBumps",
+            "docs": [
+              "Index of this transaction within the bundle. (0 if it is not)",
+              "Derivation bumps for additional signers.",
+              "Some transactions require multiple signers. Often these additional signers are \"ephemeral\" keypairs",
+              "that are generated on the client with a sole purpose of signing the transaction and be discarded immediately after.",
+              "When wrapping such transactions into multisig ones, we replace these \"ephemeral\" signing keypairs",
+              "with PDAs derived from the MultisigTransaction's `transaction_index` and controlled by the Multisig Program;",
+              "during execution the program includes the seeds of these PDAs into the `invoke_signed` calls,",
+              "thus \"signing\" on behalf of these PDAs."
+            ],
+            "type": "bytes"
+          },
+          {
+            "name": "message",
+            "docs": [
+              "data required for executing the transaction."
+            ],
+            "type": {
+              "defined": "SuperTransactionMessage"
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "types": [
+    {
+      "name": "SuperTransactionMessage",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "numSigners",
+            "docs": [
+              "The number of signer pubkeys in the account_keys vec."
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "numWritableSigners",
+            "docs": [
+              "The number of writable signer pubkeys in the account_keys vec."
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "numWritableNonSigners",
+            "docs": [
+              "The number of writable non-signer pubkeys in the account_keys vec."
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "accountKeys",
+            "docs": [
+              "Unique account pubkeys (including program IDs) required for execution of the tx.",
+              "The signer pubkeys appear at the beginning of the vec, with writable pubkeys first, and read-only pubkeys following.",
+              "The non-signer pubkeys follow with writable pubkeys first and read-only ones following.",
+              "Program IDs are also stored at the end of the vec along with other non-signer non-writable pubkeys:",
+              "",
+              "```plaintext",
+              "[pubkey1, pubkey2, pubkey3, pubkey4, pubkey5, pubkey6, pubkey7, pubkey8]",
+              "|---writable---|  |---readonly---|  |---writable---|  |---readonly---|",
+              "|------------signers-------------|  |----------non-singers-----------|",
+              "```"
+            ],
+            "type": {
+              "vec": "publicKey"
+            }
+          },
+          {
+            "name": "instructions",
+            "docs": [
+              "List of instructions making up the tx."
+            ],
+            "type": {
+              "vec": {
+                "defined": "SuperCompiledInstruction"
+              }
+            }
+          },
+          {
+            "name": "addressTableLookups",
+            "docs": [
+              "List of address table lookups used to load additional accounts",
+              "for this transaction."
+            ],
+            "type": {
+              "vec": {
+                "defined": "SuperMessageAddressTableLookup"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "SuperCompiledInstruction",
+      "docs": [
+        "Concise serialization schema for instructions that make up a transaction.",
+        "Closely mimics the Solana transaction wire format."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "programIdIndex",
+            "type": "u8"
+          },
+          {
+            "name": "accountIndexes",
+            "docs": [
+              "Indices into the tx's `account_keys` list indicating which accounts to pass to the instruction."
+            ],
+            "type": "bytes"
+          },
+          {
+            "name": "data",
+            "docs": [
+              "Instruction data."
+            ],
+            "type": "bytes"
+          }
+        ]
+      }
+    },
+    {
+      "name": "SuperMessageAddressTableLookup",
+      "docs": [
+        "Address table lookups describe an on-chain address lookup table to use",
+        "for loading more readonly and writable accounts into a transaction."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "accountKey",
+            "docs": [
+              "Address lookup table account key."
+            ],
+            "type": "publicKey"
+          },
+          {
+            "name": "writableIndexes",
+            "docs": [
+              "List of indexes used to load writable accounts."
+            ],
+            "type": "bytes"
+          },
+          {
+            "name": "readonlyIndexes",
+            "docs": [
+              "List of indexes used to load readonly accounts."
+            ],
+            "type": "bytes"
+          }
+        ]
+      }
+    },
+    {
+      "name": "TransactionBufferCreateArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "bufferIndex",
+            "docs": [
+              "Index of the buffer account to seed the account derivation"
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "finalBufferHash",
+            "docs": [
+              "Hash of the final assembled transaction message."
+            ],
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "finalBufferSize",
+            "docs": [
+              "Final size of the buffer."
+            ],
+            "type": "u16"
+          },
+          {
+            "name": "buffer",
+            "docs": [
+              "Initial slice of the buffer."
+            ],
+            "type": "bytes"
+          }
+        ]
+      }
+    },
+    {
+      "name": "TransactionBufferExtendArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "buffer",
+            "type": "bytes"
+          }
+        ]
+      }
+    },
+    {
+      "name": "SuperTransactionCreateArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "transactionIndex",
+            "docs": [
+              "Index of this transaction belongs to."
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "ephemeralSigners",
+            "docs": [
+              "Number of ephemeral signing PDAs required by the transaction."
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "transactionMessage",
+            "type": "bytes"
+          },
+          {
+            "name": "memo",
+            "type": {
+              "option": "string"
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "errors": [
+    {
+      "code": 6000,
+      "name": "DuplicateMember",
+      "msg": "Found multiple members with the same pubkey"
+    },
+    {
+      "code": 6001,
+      "name": "EmptyMembers",
+      "msg": "Members array is empty"
+    },
+    {
+      "code": 6002,
+      "name": "TooManyMembers",
+      "msg": "Too many members, can be up to 65535"
+    },
+    {
+      "code": 6003,
+      "name": "InvalidThreshold",
+      "msg": "Invalid threshold, must be between 1 and number of members with Vote permission"
+    },
+    {
+      "code": 6004,
+      "name": "Unauthorized",
+      "msg": "Attempted to perform an unauthorized action"
+    },
+    {
+      "code": 6005,
+      "name": "NotAMember",
+      "msg": "Provided pubkey is not a member of multisig"
+    },
+    {
+      "code": 6006,
+      "name": "InvalidTransactionMessage",
+      "msg": "TransactionMessage is malformed."
+    },
+    {
+      "code": 6007,
+      "name": "StaleProposal",
+      "msg": "Proposal is stale"
+    },
+    {
+      "code": 6008,
+      "name": "InvalidProposalStatus",
+      "msg": "Invalid proposal status"
+    },
+    {
+      "code": 6009,
+      "name": "InvalidTransactionIndex",
+      "msg": "Invalid transaction index"
+    },
+    {
+      "code": 6010,
+      "name": "AlreadyApproved",
+      "msg": "Member already approved the transaction"
+    },
+    {
+      "code": 6011,
+      "name": "AlreadyRejected",
+      "msg": "Member already rejected the transaction"
+    },
+    {
+      "code": 6012,
+      "name": "AlreadyCancelled",
+      "msg": "Member already cancelled the transaction"
+    },
+    {
+      "code": 6013,
+      "name": "InvalidNumberOfAccounts",
+      "msg": "Wrong number of accounts provided"
+    },
+    {
+      "code": 6014,
+      "name": "InvalidAccount",
+      "msg": "Invalid account provided"
+    },
+    {
+      "code": 6015,
+      "name": "RemoveLastMember",
+      "msg": "Cannot remove last member"
+    },
+    {
+      "code": 6016,
+      "name": "NoVoters",
+      "msg": "Members don't include any voters"
+    },
+    {
+      "code": 6017,
+      "name": "NoProposers",
+      "msg": "Members don't include any proposers"
+    },
+    {
+      "code": 6018,
+      "name": "NoExecutors",
+      "msg": "Members don't include any executors"
+    },
+    {
+      "code": 6019,
+      "name": "InvalidStaleTransactionIndex",
+      "msg": "`stale_transaction_index` must be <= `transaction_index`"
+    },
+    {
+      "code": 6020,
+      "name": "NotSupportedForControlled",
+      "msg": "Instruction not supported for controlled multisig"
+    },
+    {
+      "code": 6021,
+      "name": "TimeLockNotReleased",
+      "msg": "Proposal time lock has not been released"
+    },
+    {
+      "code": 6022,
+      "name": "NoActions",
+      "msg": "Config transaction must have at least one action"
+    },
+    {
+      "code": 6023,
+      "name": "MissingAccount",
+      "msg": "Missing account"
+    },
+    {
+      "code": 6024,
+      "name": "InvalidMint",
+      "msg": "Invalid mint"
+    },
+    {
+      "code": 6025,
+      "name": "InvalidDestination",
+      "msg": "Invalid destination"
+    },
+    {
+      "code": 6026,
+      "name": "SpendingLimitExceeded",
+      "msg": "Spending limit exceeded"
+    },
+    {
+      "code": 6027,
+      "name": "DecimalsMismatch",
+      "msg": "Decimals don't match the mint"
+    },
+    {
+      "code": 6028,
+      "name": "UnknownPermission",
+      "msg": "Member has unknown permission"
+    },
+    {
+      "code": 6029,
+      "name": "ProtectedAccount",
+      "msg": "Account is protected, it cannot be passed into a CPI as writable"
+    },
+    {
+      "code": 6030,
+      "name": "TimeLockExceedsMaxAllowed",
+      "msg": "Time lock exceeds the maximum allowed (90 days)"
+    },
+    {
+      "code": 6031,
+      "name": "IllegalAccountOwner",
+      "msg": "Account is not owned by Multisig program"
+    },
+    {
+      "code": 6032,
+      "name": "RentReclamationDisabled",
+      "msg": "Rent reclamation is disabled for this multisig"
+    },
+    {
+      "code": 6033,
+      "name": "InvalidRentCollector",
+      "msg": "Invalid rent collector address"
+    },
+    {
+      "code": 6034,
+      "name": "ProposalForAnotherMultisig",
+      "msg": "Proposal is for another multisig"
+    },
+    {
+      "code": 6035,
+      "name": "TransactionForAnotherMultisig",
+      "msg": "Transaction is for another multisig"
+    },
+    {
+      "code": 6036,
+      "name": "TransactionNotMatchingProposal",
+      "msg": "Transaction doesn't match proposal"
+    },
+    {
+      "code": 6037,
+      "name": "TransactionNotLastInBatch",
+      "msg": "Transaction is not last in batch"
+    },
+    {
+      "code": 6038,
+      "name": "BatchNotEmpty",
+      "msg": "Batch is not empty"
+    },
+    {
+      "code": 6039,
+      "name": "SpendingLimitInvalidAmount",
+      "msg": "Invalid SpendingLimit amount"
+    },
+    {
+      "code": 6040,
+      "name": "InvalidInstructionArgs",
+      "msg": "Invalid Instruction Arguments"
+    },
+    {
+      "code": 6041,
+      "name": "FinalBufferHashMismatch",
+      "msg": "Final message buffer hash doesnt match the expected hash"
+    },
+    {
+      "code": 6042,
+      "name": "FinalBufferSizeExceeded",
+      "msg": "Final buffer size cannot exceed 4000 bytes"
+    },
+    {
+      "code": 6043,
+      "name": "FinalBufferSizeMismatch",
+      "msg": "Final buffer size mismatch"
+    },
+    {
+      "code": 6044,
+      "name": "MultisigCreateDeprecated",
+      "msg": "multisig_create has been deprecated. Use multisig_create_v2 instead."
+    }
+  ]
+};
+
+export const IDL: SuperTxn = {
+  "version": "0.1.0",
+  "name": "super_txn",
+  "instructions": [
+    {
+      "name": "txnBufferCreate",
+      "docs": [
+        "Create a transaction buffer account."
+      ],
+      "accounts": [
+        {
+          "name": "transactionBuffer",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "creator",
+          "isMut": false,
+          "isSigner": true,
+          "docs": [
+            "The member of the multisig that is creating the transaction."
+          ]
+        },
+        {
+          "name": "rentPayer",
+          "isMut": true,
+          "isSigner": true,
+          "docs": [
+            "The payer for the transaction account rent."
+          ]
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": "TransactionBufferCreateArgs"
+          }
+        }
+      ]
+    },
+    {
+      "name": "txnBufferClose",
+      "docs": [
+        "Close a transaction buffer account."
+      ],
+      "accounts": [
+        {
+          "name": "transactionBuffer",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "creator",
+          "isMut": false,
+          "isSigner": true,
+          "docs": [
+            "The member of the multisig that created the TransactionBuffer."
+          ]
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "txnBufferExtend",
+      "docs": [
+        "Extend a transaction buffer account."
+      ],
+      "accounts": [
+        {
+          "name": "transactionBuffer",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "creator",
+          "isMut": false,
+          "isSigner": true,
+          "docs": [
+            "The member of the multisig that created the TransactionBuffer."
+          ]
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": "TransactionBufferExtendArgs"
+          }
+        }
+      ]
+    },
+    {
+      "name": "superTransactionCreate",
+      "docs": [
+        "Create a new super transaction."
+      ],
+      "accounts": [
+        {
+          "name": "transaction",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "creator",
+          "isMut": false,
+          "isSigner": true,
+          "docs": [
+            "The member of the multisig that is creating the transaction."
+          ]
+        },
+        {
+          "name": "rentPayer",
+          "isMut": true,
+          "isSigner": true,
+          "docs": [
+            "The payer for the transaction account rent."
+          ]
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": "SuperTransactionCreateArgs"
+          }
+        }
+      ]
+    },
+    {
+      "name": "superTransactionCreateFromBuffer",
+      "docs": [
+        "Create a new super transaction from a completed transaction buffer.",
+        "Finalized buffer hash must match `final_buffer_hash`"
+      ],
+      "accounts": [
+        {
+          "name": "superTransactionCreate",
+          "accounts": [
+            {
+              "name": "transaction",
+              "isMut": true,
+              "isSigner": false
+            },
+            {
+              "name": "creator",
+              "isMut": false,
+              "isSigner": true,
+              "docs": [
+                "The member of the multisig that is creating the transaction."
+              ]
+            },
+            {
+              "name": "rentPayer",
+              "isMut": true,
+              "isSigner": true,
+              "docs": [
+                "The payer for the transaction account rent."
+              ]
+            },
+            {
+              "name": "systemProgram",
+              "isMut": false,
+              "isSigner": false
+            }
+          ]
+        },
+        {
+          "name": "transactionBuffer",
+          "isMut": true,
+          "isSigner": false
+        },
+        {
+          "name": "creator",
+          "isMut": true,
+          "isSigner": true
+        }
+      ],
+      "args": [
+        {
+          "name": "args",
+          "type": {
+            "defined": "SuperTransactionCreateArgs"
+          }
+        }
+      ]
+    },
+    {
+      "name": "superTransactionExecute",
+      "docs": [
+        "Execute a super transaction.",
+        "The transaction must be `Approved`."
+      ],
+      "accounts": [
+        {
+          "name": "transaction",
+          "isMut": true,
+          "isSigner": false,
+          "docs": [
+            "The transaction to execute."
+          ]
+        },
+        {
+          "name": "creator",
+          "isMut": true,
+          "isSigner": true
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "superTransactionAccountsClose",
+      "docs": [
+        "Closes a `SuperTransaction`"
+      ],
+      "accounts": [
+        {
+          "name": "transaction",
+          "isMut": true,
+          "isSigner": false,
+          "docs": [
+            "SuperTransaction corresponding to the `proposal`."
+          ]
+        },
+        {
+          "name": "creator",
+          "isMut": true,
+          "isSigner": true
+        },
+        {
+          "name": "systemProgram",
+          "isMut": false,
+          "isSigner": false
+        }
+      ],
+      "args": []
+    }
+  ],
+  "accounts": [
+    {
+      "name": "transactionBuffer",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "creator",
+            "docs": [
+              "txn buffer creator"
+            ],
+            "type": "publicKey"
+          },
+          {
+            "name": "bufferIndex",
+            "docs": [
+              "Index to seed address derivation"
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "finalBufferHash",
+            "docs": [
+              "Hash of the final assembled transaction message."
+            ],
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "finalBufferSize",
+            "docs": [
+              "The size of the final assembled transaction message."
+            ],
+            "type": "u16"
+          },
+          {
+            "name": "buffer",
+            "docs": [
+              "The buffer of the transaction message."
+            ],
+            "type": "bytes"
+          }
+        ]
+      }
+    },
+    {
+      "name": "superTransaction",
+      "docs": [
+        "Stores data required for tracking the voting and execution status of a super transaction.",
+        "Super transaction is a transaction wraps arbitrary Solana instructions, typically calling into other Solana programs."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "creator",
+            "docs": [
+              "SuperTransaction creator"
+            ],
+            "type": "publicKey"
+          },
+          {
+            "name": "ephemeralSignerBumps",
+            "docs": [
+              "Index of this transaction within the bundle. (0 if it is not)",
+              "Derivation bumps for additional signers.",
+              "Some transactions require multiple signers. Often these additional signers are \"ephemeral\" keypairs",
+              "that are generated on the client with a sole purpose of signing the transaction and be discarded immediately after.",
+              "When wrapping such transactions into multisig ones, we replace these \"ephemeral\" signing keypairs",
+              "with PDAs derived from the MultisigTransaction's `transaction_index` and controlled by the Multisig Program;",
+              "during execution the program includes the seeds of these PDAs into the `invoke_signed` calls,",
+              "thus \"signing\" on behalf of these PDAs."
+            ],
+            "type": "bytes"
+          },
+          {
+            "name": "message",
+            "docs": [
+              "data required for executing the transaction."
+            ],
+            "type": {
+              "defined": "SuperTransactionMessage"
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "types": [
+    {
+      "name": "SuperTransactionMessage",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "numSigners",
+            "docs": [
+              "The number of signer pubkeys in the account_keys vec."
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "numWritableSigners",
+            "docs": [
+              "The number of writable signer pubkeys in the account_keys vec."
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "numWritableNonSigners",
+            "docs": [
+              "The number of writable non-signer pubkeys in the account_keys vec."
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "accountKeys",
+            "docs": [
+              "Unique account pubkeys (including program IDs) required for execution of the tx.",
+              "The signer pubkeys appear at the beginning of the vec, with writable pubkeys first, and read-only pubkeys following.",
+              "The non-signer pubkeys follow with writable pubkeys first and read-only ones following.",
+              "Program IDs are also stored at the end of the vec along with other non-signer non-writable pubkeys:",
+              "",
+              "```plaintext",
+              "[pubkey1, pubkey2, pubkey3, pubkey4, pubkey5, pubkey6, pubkey7, pubkey8]",
+              "|---writable---|  |---readonly---|  |---writable---|  |---readonly---|",
+              "|------------signers-------------|  |----------non-singers-----------|",
+              "```"
+            ],
+            "type": {
+              "vec": "publicKey"
+            }
+          },
+          {
+            "name": "instructions",
+            "docs": [
+              "List of instructions making up the tx."
+            ],
+            "type": {
+              "vec": {
+                "defined": "SuperCompiledInstruction"
+              }
+            }
+          },
+          {
+            "name": "addressTableLookups",
+            "docs": [
+              "List of address table lookups used to load additional accounts",
+              "for this transaction."
+            ],
+            "type": {
+              "vec": {
+                "defined": "SuperMessageAddressTableLookup"
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "SuperCompiledInstruction",
+      "docs": [
+        "Concise serialization schema for instructions that make up a transaction.",
+        "Closely mimics the Solana transaction wire format."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "programIdIndex",
+            "type": "u8"
+          },
+          {
+            "name": "accountIndexes",
+            "docs": [
+              "Indices into the tx's `account_keys` list indicating which accounts to pass to the instruction."
+            ],
+            "type": "bytes"
+          },
+          {
+            "name": "data",
+            "docs": [
+              "Instruction data."
+            ],
+            "type": "bytes"
+          }
+        ]
+      }
+    },
+    {
+      "name": "SuperMessageAddressTableLookup",
+      "docs": [
+        "Address table lookups describe an on-chain address lookup table to use",
+        "for loading more readonly and writable accounts into a transaction."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "accountKey",
+            "docs": [
+              "Address lookup table account key."
+            ],
+            "type": "publicKey"
+          },
+          {
+            "name": "writableIndexes",
+            "docs": [
+              "List of indexes used to load writable accounts."
+            ],
+            "type": "bytes"
+          },
+          {
+            "name": "readonlyIndexes",
+            "docs": [
+              "List of indexes used to load readonly accounts."
+            ],
+            "type": "bytes"
+          }
+        ]
+      }
+    },
+    {
+      "name": "TransactionBufferCreateArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "bufferIndex",
+            "docs": [
+              "Index of the buffer account to seed the account derivation"
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "finalBufferHash",
+            "docs": [
+              "Hash of the final assembled transaction message."
+            ],
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "finalBufferSize",
+            "docs": [
+              "Final size of the buffer."
+            ],
+            "type": "u16"
+          },
+          {
+            "name": "buffer",
+            "docs": [
+              "Initial slice of the buffer."
+            ],
+            "type": "bytes"
+          }
+        ]
+      }
+    },
+    {
+      "name": "TransactionBufferExtendArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "buffer",
+            "type": "bytes"
+          }
+        ]
+      }
+    },
+    {
+      "name": "SuperTransactionCreateArgs",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "transactionIndex",
+            "docs": [
+              "Index of this transaction belongs to."
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "ephemeralSigners",
+            "docs": [
+              "Number of ephemeral signing PDAs required by the transaction."
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "transactionMessage",
+            "type": "bytes"
+          },
+          {
+            "name": "memo",
+            "type": {
+              "option": "string"
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "errors": [
+    {
+      "code": 6000,
+      "name": "DuplicateMember",
+      "msg": "Found multiple members with the same pubkey"
+    },
+    {
+      "code": 6001,
+      "name": "EmptyMembers",
+      "msg": "Members array is empty"
+    },
+    {
+      "code": 6002,
+      "name": "TooManyMembers",
+      "msg": "Too many members, can be up to 65535"
+    },
+    {
+      "code": 6003,
+      "name": "InvalidThreshold",
+      "msg": "Invalid threshold, must be between 1 and number of members with Vote permission"
+    },
+    {
+      "code": 6004,
+      "name": "Unauthorized",
+      "msg": "Attempted to perform an unauthorized action"
+    },
+    {
+      "code": 6005,
+      "name": "NotAMember",
+      "msg": "Provided pubkey is not a member of multisig"
+    },
+    {
+      "code": 6006,
+      "name": "InvalidTransactionMessage",
+      "msg": "TransactionMessage is malformed."
+    },
+    {
+      "code": 6007,
+      "name": "StaleProposal",
+      "msg": "Proposal is stale"
+    },
+    {
+      "code": 6008,
+      "name": "InvalidProposalStatus",
+      "msg": "Invalid proposal status"
+    },
+    {
+      "code": 6009,
+      "name": "InvalidTransactionIndex",
+      "msg": "Invalid transaction index"
+    },
+    {
+      "code": 6010,
+      "name": "AlreadyApproved",
+      "msg": "Member already approved the transaction"
+    },
+    {
+      "code": 6011,
+      "name": "AlreadyRejected",
+      "msg": "Member already rejected the transaction"
+    },
+    {
+      "code": 6012,
+      "name": "AlreadyCancelled",
+      "msg": "Member already cancelled the transaction"
+    },
+    {
+      "code": 6013,
+      "name": "InvalidNumberOfAccounts",
+      "msg": "Wrong number of accounts provided"
+    },
+    {
+      "code": 6014,
+      "name": "InvalidAccount",
+      "msg": "Invalid account provided"
+    },
+    {
+      "code": 6015,
+      "name": "RemoveLastMember",
+      "msg": "Cannot remove last member"
+    },
+    {
+      "code": 6016,
+      "name": "NoVoters",
+      "msg": "Members don't include any voters"
+    },
+    {
+      "code": 6017,
+      "name": "NoProposers",
+      "msg": "Members don't include any proposers"
+    },
+    {
+      "code": 6018,
+      "name": "NoExecutors",
+      "msg": "Members don't include any executors"
+    },
+    {
+      "code": 6019,
+      "name": "InvalidStaleTransactionIndex",
+      "msg": "`stale_transaction_index` must be <= `transaction_index`"
+    },
+    {
+      "code": 6020,
+      "name": "NotSupportedForControlled",
+      "msg": "Instruction not supported for controlled multisig"
+    },
+    {
+      "code": 6021,
+      "name": "TimeLockNotReleased",
+      "msg": "Proposal time lock has not been released"
+    },
+    {
+      "code": 6022,
+      "name": "NoActions",
+      "msg": "Config transaction must have at least one action"
+    },
+    {
+      "code": 6023,
+      "name": "MissingAccount",
+      "msg": "Missing account"
+    },
+    {
+      "code": 6024,
+      "name": "InvalidMint",
+      "msg": "Invalid mint"
+    },
+    {
+      "code": 6025,
+      "name": "InvalidDestination",
+      "msg": "Invalid destination"
+    },
+    {
+      "code": 6026,
+      "name": "SpendingLimitExceeded",
+      "msg": "Spending limit exceeded"
+    },
+    {
+      "code": 6027,
+      "name": "DecimalsMismatch",
+      "msg": "Decimals don't match the mint"
+    },
+    {
+      "code": 6028,
+      "name": "UnknownPermission",
+      "msg": "Member has unknown permission"
+    },
+    {
+      "code": 6029,
+      "name": "ProtectedAccount",
+      "msg": "Account is protected, it cannot be passed into a CPI as writable"
+    },
+    {
+      "code": 6030,
+      "name": "TimeLockExceedsMaxAllowed",
+      "msg": "Time lock exceeds the maximum allowed (90 days)"
+    },
+    {
+      "code": 6031,
+      "name": "IllegalAccountOwner",
+      "msg": "Account is not owned by Multisig program"
+    },
+    {
+      "code": 6032,
+      "name": "RentReclamationDisabled",
+      "msg": "Rent reclamation is disabled for this multisig"
+    },
+    {
+      "code": 6033,
+      "name": "InvalidRentCollector",
+      "msg": "Invalid rent collector address"
+    },
+    {
+      "code": 6034,
+      "name": "ProposalForAnotherMultisig",
+      "msg": "Proposal is for another multisig"
+    },
+    {
+      "code": 6035,
+      "name": "TransactionForAnotherMultisig",
+      "msg": "Transaction is for another multisig"
+    },
+    {
+      "code": 6036,
+      "name": "TransactionNotMatchingProposal",
+      "msg": "Transaction doesn't match proposal"
+    },
+    {
+      "code": 6037,
+      "name": "TransactionNotLastInBatch",
+      "msg": "Transaction is not last in batch"
+    },
+    {
+      "code": 6038,
+      "name": "BatchNotEmpty",
+      "msg": "Batch is not empty"
+    },
+    {
+      "code": 6039,
+      "name": "SpendingLimitInvalidAmount",
+      "msg": "Invalid SpendingLimit amount"
+    },
+    {
+      "code": 6040,
+      "name": "InvalidInstructionArgs",
+      "msg": "Invalid Instruction Arguments"
+    },
+    {
+      "code": 6041,
+      "name": "FinalBufferHashMismatch",
+      "msg": "Final message buffer hash doesnt match the expected hash"
+    },
+    {
+      "code": 6042,
+      "name": "FinalBufferSizeExceeded",
+      "msg": "Final buffer size cannot exceed 4000 bytes"
+    },
+    {
+      "code": 6043,
+      "name": "FinalBufferSizeMismatch",
+      "msg": "Final buffer size mismatch"
+    },
+    {
+      "code": 6044,
+      "name": "MultisigCreateDeprecated",
+      "msg": "multisig_create has been deprecated. Use multisig_create_v2 instead."
+    }
+  ]
+};
