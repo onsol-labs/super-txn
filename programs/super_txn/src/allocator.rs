@@ -1,133 +1,87 @@
-/*
-Optimizing Bump Heap Allocation
+#![allow(dead_code)]
 
-Objective: Increase available heap memory while maintaining flexibility in program invocation.
+use std::alloc::{GlobalAlloc, Layout};
 
-1. Initial State: Default 32 KiB Heap
+use anchor_lang::solana_program;
 
-Memory Layout:
-0x300000000           0x300008000
-      |                    |
-      v                    v
-      [--------------------]
-      ^                    ^
-      |                    |
- VM Lower              VM Upper
- Boundary              Boundary
+/// The end of the region where heap space may be reserved for the program.
+///
+/// The actual size of the heap is currently not available at runtime.
+pub const HEAP_END_ADDRESS: usize = 0x400000000;
 
-Default Allocator (Allocates Backwards / Top Down) (Default 32 KiB):
-0x300000000           0x300008000
-      |                    |
-      [--------------------]
-                           ^
-                           |
-                  Allocation starts here (SAFE)
+#[cfg(not(feature = "no-entrypoint"))]
+#[global_allocator]
+pub static ALLOCATOR: BumpAllocator = BumpAllocator {};
 
-2. Naive Approach: Increase HEAP_LENGTH to 8 * 32 KiB + Default Allocator
+pub fn heap_used() -> usize {
+    #[cfg(not(feature = "no-entrypoint"))]
+    return ALLOCATOR.used();
 
-Memory Layout with Increased HEAP_LENGTH:
-0x300000000           0x300008000                          0x300040000
-      |                    |                                     |
-      v                    v                                     v
-      [--------------------|------------------------------------|]
-      ^                    ^                                     ^
-      |                    |                                     |
- VM Lower              VM Upper                         Allocation starts here
- Boundary              Boundary                         (ACCESS VIOLATION!)
+    #[cfg(feature = "no-entrypoint")]
+    return 0;
+}
 
-Issue: Access violation occurs without requestHeapFrame, requiring it for every transaction.
+/// Custom bump allocator for on-chain operations
+///
+/// The default allocator is also a bump one, but grows from a fixed
+/// HEAP_START + 32kb downwards and has no way of making use of extra
+/// heap space requested for the transaction.
+///
+/// This implementation starts at HEAP_START and grows upward, producing
+/// a segfault once out of available heap memory.
+pub struct BumpAllocator {}
 
-3. Optimized Solution: Forward Allocation with Flexible Heap Usage
-
-Memory Layout (Same as Naive Approach):
-0x300000000           0x300008000                          0x300040000
-      |                    |                                     |
-      v                    v                                     v
-      [--------------------|------------------------------------|]
-      ^                    ^                                     ^
-      |                    |                                     |
- VM Lower              VM Upper                             Allocator & VM
- Boundary              Boundary                             Heap Limit
-
-Forward Allocator Behavior:
-
-a) Without requestHeapFrame:
-0x300000000           0x300008000
-      |                    |
-      [--------------------]
-      ^                    ^
-      |                    |
- VM Lower               VM Upper
- Boundary               Boundary
- Allocation
- starts here (SAFE)
-
-b) With requestHeapFrame:
-0x300000000           0x300008000                          0x300040000
-      |                    |                                     |
-      [--------------------|------------------------------------|]
-      ^                    ^                                     ^
-      |                    |                                     |
- VM Lower                  |                                VM Upper
- Boundary                                                   Boundary
- Allocation        Allocation continues              Maximum allocation
- starts here       with requestHeapFrame             with requestHeapFrame
-(SAFE)
-
-Key Advantages:
-1. Compatibility: Functions without requestHeapFrame for allocations ≤32 KiB.
-2. Extensibility: Supports larger allocations when requestHeapFrame is invoked.
-3. Efficiency: Eliminates mandatory requestHeapFrame calls for all transactions.
-
-Conclusion:
-The forward allocation strategy offers a robust solution, providing both backward
-compatibility for smaller heap requirements and the flexibility to utilize extended
-heap space when necessary.
-
-The following allocator is a copy of the bump allocator found in
-solana_program::entrypoint and
-https://github.com/solana-labs/solana-program-library/blob/master/examples/rust/custom-heap/src/entrypoint.rs
-
-but with changes to its HEAP_LENGTH and its
-starting allocation address.
-*/
-
-use anchor_lang::solana_program::entrypoint::HEAP_START_ADDRESS;
-use std::{alloc::Layout, mem::size_of, ptr::null_mut};
-
-/// Length of the memory region used for program heap.
-pub const HEAP_LENGTH: usize = 8 * 32 * 1024;
-
-struct BumpAllocator;
-
-unsafe impl std::alloc::GlobalAlloc for BumpAllocator {
+unsafe impl GlobalAlloc for BumpAllocator {
     #[inline]
     unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
-        const POS_PTR: *mut usize = HEAP_START_ADDRESS as *mut usize;
-        const TOP_ADDRESS: usize = HEAP_START_ADDRESS as usize + HEAP_LENGTH;
-        const BOTTOM_ADDRESS: usize = HEAP_START_ADDRESS as usize + size_of::<*mut u8>();
-        let mut pos = *POS_PTR;
-        if pos == 0 {
-            // First time, set starting position to bottom address
-            pos = BOTTOM_ADDRESS;
-        }
-        // Align the position upwards
-        pos = (pos + layout.align() - 1) & !(layout.align() - 1);
-        let next_pos = pos.saturating_add(layout.size());
-        if next_pos > TOP_ADDRESS {
-            return null_mut();
-        }
-        *POS_PTR = next_pos;
-        pos as *mut u8
-    }
+        let heap_start = solana_program::entrypoint::HEAP_START_ADDRESS as usize;
+        let pos_ptr = heap_start as *mut usize;
 
+        let mut pos = *pos_ptr;
+        if pos == 0 {
+            // First time, override the current position to be just past the location
+            // where the current heap position is stored.
+            pos = heap_start + 8;
+        }
+
+        // The result address needs to be aligned to layout.align(),
+        // which is guaranteed to be a power of two.
+        // Find the first address >=pos that has the required alignment.
+        // Wrapping ops are used for performance.
+        let mask = layout.align().wrapping_sub(1);
+        let begin = pos.wrapping_add(mask) & (!mask);
+
+        // Update allocator state
+        let end = begin.checked_add(layout.size()).unwrap();
+        *pos_ptr = end;
+
+        // Ensure huge allocations can't escape the dedicated heap memory region
+        assert!(end < HEAP_END_ADDRESS);
+
+        // Write a byte to trigger heap overflow errors early
+        let end_ptr = end as *mut u8;
+        *end_ptr = 0;
+
+        begin as *mut u8
+    }
     #[inline]
     unsafe fn dealloc(&self, _: *mut u8, _: Layout) {
         // I'm a bump allocator, I don't free
     }
 }
 
-// Only use the allocator if we're not in a no-entrypoint context
-#[cfg(not(feature = "no-entrypoint"))]
-#[global_allocator]
-static A: BumpAllocator = BumpAllocator;
+impl BumpAllocator {
+    #[inline]
+    pub fn used(&self) -> usize {
+        let heap_start = solana_program::entrypoint::HEAP_START_ADDRESS as usize;
+        unsafe {
+            let pos_ptr = heap_start as *mut usize;
+
+            let pos = *pos_ptr;
+            if pos == 0 {
+                return 0;
+            }
+            return pos - heap_start;
+        }
+    }
+}

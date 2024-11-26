@@ -85,6 +85,11 @@ export function createTxnBufferExtendInstruction(
       isWritable: false,
       isSigner: true,
     },
+    {
+      pubkey: web3.SystemProgram.programId,
+      isWritable: false,
+      isSigner: false,
+    },
   ]
 
   if (accounts.anchorRemainingAccounts != null) {

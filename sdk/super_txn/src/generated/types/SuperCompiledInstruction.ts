@@ -8,8 +8,8 @@
 import * as beet from '@metaplex-foundation/beet'
 export type SuperCompiledInstruction = {
   programIdIndex: number
-  accountIndexes: Uint8Array
-  data: Uint8Array
+  accountIndexes: Uint8Array | number[]
+  data: Uint8Array | number[]
 }
 
 /**

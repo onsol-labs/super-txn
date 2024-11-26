@@ -1,6 +1,6 @@
 import { u8, u32, u64, bignum } from "@metaplex-foundation/beet";
 import { Buffer } from "buffer";
-import { SuperTransactionMessage } from "./generated";
+import { SuperTransactionMessage, superTransactionMessageBeet } from "./generated";
 import {
   AccountMeta,
   AddressLookupTableAccount,
@@ -128,6 +128,7 @@ export function transactionMessageToSuperTransactionMessageBytes({
   return transactionMessageBytes;
 }
 
+
 /** Populate remaining accounts required for execution of the transaction. */
 export async function accountsForTransactionExecute({
   connection,
@@ -242,3 +243,61 @@ export async function accountsForTransactionExecute({
     lookupTableAccounts: [...addressLookupTableAccounts.values()],
   };
 }
+
+
+/** We use custom serialization for `transaction_message` that ensures as small byte size as possible. */
+export function bundledMessageToSuperTransactionMessage({
+  messageBuffer,
+}: {
+  messageBuffer: Buffer;
+}): SuperTransactionMessage {
+  // We use custom serialization for `transaction_message` that ensures as small byte size as possible.
+  const [transactionMessage] = superTransactionMessageBeet.deserialize(
+    messageBuffer
+  );
+
+  return transactionMessage;
+}
+
+
+/** We use custom serialization for `transaction_message` that ensures as small byte size as possible. */
+export function transactionMessageToSuperTransactionMessage({
+  message,
+  addressLookupTableAccounts,
+}: {
+  message: TransactionMessage;
+  addressLookupTableAccounts?: AddressLookupTableAccount[];
+}): SuperTransactionMessage {
+  // Use custom implementation of `message.compileToV0Message` that allows instruction programIds
+  // to also be loaded from `addressLookupTableAccounts`.
+  const compiledMessage = compileToWrappedMessageV0({
+    payerKey: message.payerKey,
+    recentBlockhash: message.recentBlockhash,
+    instructions: message.instructions,
+    addressLookupTableAccounts,
+  });
+
+  // We use custom serialization for `transaction_message` that ensures as small byte size as possible.
+  const superTranasctionMessage: SuperTransactionMessage ={
+    numSigners: compiledMessage.header.numRequiredSignatures,
+    numWritableSigners:
+      compiledMessage.header.numRequiredSignatures -
+      compiledMessage.header.numReadonlySignedAccounts,
+    numWritableNonSigners:
+      compiledMessage.staticAccountKeys.length -
+      compiledMessage.header.numRequiredSignatures -
+      compiledMessage.header.numReadonlyUnsignedAccounts,
+    accountKeys: compiledMessage.staticAccountKeys,
+    instructions: compiledMessage.compiledInstructions.map((ix) => {
+      return {
+        programIdIndex: ix.programIdIndex,
+        accountIndexes: ix.accountKeyIndexes,
+        data: Array.from(ix.data),
+      };
+    }),
+    addressTableLookups: compiledMessage.addressTableLookups,
+  };
+
+  return superTranasctionMessage;
+}
+

@@ -24,7 +24,7 @@ pub struct ExecutableTransactionMessage<'a, 'info> {
 
 impl<'a, 'info> ExecutableTransactionMessage<'a, 'info> {
     /// # Arguments
-    /// `message` - a `MsTransactionMessage`.
+    /// `message` - a `TransactionMessage`.
     /// `message_account_infos` - AccountInfo's that are expected to be mentioned in the message.
     /// `address_lookup_table_account_infos` - AccountInfo's that are expected to correspond to the lookup tables mentioned in `message.address_table_lookups`.
     /// `creator_key` - The creator that is expected to sign the message.

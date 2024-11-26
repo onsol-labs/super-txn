@@ -5,6 +5,7 @@ import {
   PublicKey,
   SystemProgram,
   TransactionInstruction,
+  TransactionMessage,
 } from "@solana/web3.js";
 import { getTransactionPda } from "../pda";
 import {
@@ -12,10 +13,14 @@ import {
   PROGRAM_ID,
   SuperTransaction,
 } from "../generated";
-import { accountsForTransactionExecute } from "../utils";
+import {
+  accountsForTransactionExecute,
+  bundledMessageToSuperTransactionMessage,
+  transactionMessageToSuperTransactionMessage,
+} from "../utils";
 
 export async function superTransactionExecute({
-  connection,  
+  connection,
   creator,
   transactionIndex,
   programId = PROGRAM_ID,
@@ -37,7 +42,7 @@ export async function superTransactionExecute({
   // Initialize with default values
   let accountMetas: AccountMeta[] = [];
   let lookupTableAccounts: AddressLookupTableAccount[] = [];
-  
+
   try {
     // Fetch transaction account
     const transactionAccount = await SuperTransaction.fromAccountAddress(
@@ -57,7 +62,6 @@ export async function superTransactionExecute({
 
     accountMetas = result.accountMetas;
     lookupTableAccounts = result.lookupTableAccounts;
-
   } catch {
     // fail silently
   }
@@ -75,19 +79,19 @@ export async function superTransactionExecute({
   };
 }
 
-
 export async function bundledSuperTransactionExecute({
+  connection,
   creator,
+  transactionMessage,
   transactionIndex,
-  fromPubkey,
-toPubkey,
+  addressLookupTableAccounts,
   programId = PROGRAM_ID,
 }: {
   connection: Connection;
   creator: PublicKey;
+  transactionMessage: TransactionMessage;
+  addressLookupTableAccounts: AddressLookupTableAccount[];
   transactionIndex: number;
-  fromPubkey: PublicKey,
-  toPubkey: PublicKey,
   programId?: PublicKey;
 }): Promise<{
   instruction: TransactionInstruction;
@@ -103,13 +107,23 @@ toPubkey,
   let accountMetas: AccountMeta[] = [];
   let lookupTableAccounts: AddressLookupTableAccount[] = [];
 
-    accountMetas = [
-      {pubkey: fromPubkey, isSigner: true, isWritable: true},
-      {pubkey: toPubkey, isSigner: false, isWritable: true},
-      {pubkey: SystemProgram.programId, isSigner: false, isWritable: false},
-    ];
-    // lookupTableAccounts = result.lookupTableAccounts;
+  // Fetch transaction account
+  const superTransactionMessage = transactionMessageToSuperTransactionMessage({
+    message: transactionMessage,
+    addressLookupTableAccounts,
+  });
+  // Destructure the result from accountsForTransactionExecute
+  const result = await accountsForTransactionExecute({
+    connection,
+    message: superTransactionMessage,
+    ephemeralSignerBumps: [],
+    creator,
+    transactionPda,
+    programId,
+  });
 
+  accountMetas = result.accountMetas;
+  lookupTableAccounts = result.lookupTableAccounts;
 
   return {
     instruction: createSuperTransactionExecuteInstruction(

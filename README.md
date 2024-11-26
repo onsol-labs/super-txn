@@ -64,12 +64,13 @@ npm install
 ```
 And run these tests with this command:
 ```bash
-anchor test
+cd sdk/super_txn && yarn build
 ```
 
 ```bash
-cd sdk/super_txn && yarn build
+anchor test
 ```
+
 ## Usage Notes
 
 - Transaction buffers must be properly sized before creation
@@ -84,5 +85,3 @@ Audit on this program has not been done. Code is provided as is, please do not e
 ## License
 
 Follows the license of Squads V4 and it is the AGPL-3.0 license, see [LICENSE](./LICENSE).
-
-# super-txns

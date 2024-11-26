@@ -4,7 +4,9 @@
     "start": "tsx src/main.ts"
   },
   "dependencies": {
+    "@mercurial-finance/optimist": "^0.4.0",
     "@solana/spl-token": "^0.3.6",
+    "@solana/spl-token-0.4": "npm:@solana/spl-token@0.4.0",
     "@solana/web3.js": "^1",
     "dotenv": "^16.4.5"
   },

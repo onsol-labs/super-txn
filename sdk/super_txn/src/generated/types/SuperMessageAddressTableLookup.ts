@@ -10,8 +10,8 @@ import * as beetSolana from '@metaplex-foundation/beet-solana'
 import * as beet from '@metaplex-foundation/beet'
 export type SuperMessageAddressTableLookup = {
   accountKey: web3.PublicKey
-  writableIndexes: Uint8Array
-  readonlyIndexes: Uint8Array
+  writableIndexes: Uint8Array | number[]
+  readonlyIndexes: Uint8Array | number[]
 }
 
 /**
