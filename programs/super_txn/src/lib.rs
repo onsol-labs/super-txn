@@ -11,6 +11,22 @@ pub mod utils;
 
 declare_id!("superB6bzm82y1To5rRaMr7KmqkLNVnCUGwUBemtJV3");
 
+#[cfg(not(feature = "no-entrypoint"))]
+use solana_security_txt::security_txt;
+
+#[cfg(not(feature = "no-entrypoint"))]
+security_txt! {
+    name: "Super Txn",
+    project_url: "https://alldomains.id",
+    contacts: "discord:cryptomiester",
+    policy: "https://alldomains.id",
+
+    // Optional Fields
+    preferred_languages: "en",
+    source_code: "https://github.com/onsol-labs/super-txn",
+    acknowledgements: "Thank you to our bug bounty hunters!"
+}
+
 #[program]
 pub mod super_txn {
     use super::*;
