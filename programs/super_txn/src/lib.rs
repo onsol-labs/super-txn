@@ -23,8 +23,7 @@ security_txt! {
 
     // Optional Fields
     preferred_languages: "en",
-    source_code: "https://github.com/onsol-labs/super-txn",
-    acknowledgements: "Thank you to our bug bounty hunters!"
+    source_code: "https://github.com/onsol-labs/super-txn"
 }
 
 #[program]
