@@ -12,7 +12,7 @@ pub mod utils;
 declare_id!("superB6bzm82y1To5rRaMr7KmqkLNVnCUGwUBemtJV3");
 
 #[cfg(not(feature = "no-entrypoint"))]
-use {default_env::default_env, solana_security_txt::security_txt};
+use solana_security_txt::security_txt;
 
 
 #[cfg(not(feature = "no-entrypoint"))]
