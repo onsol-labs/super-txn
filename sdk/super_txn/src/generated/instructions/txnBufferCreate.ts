@@ -71,7 +71,7 @@ export const txnBufferCreateInstructionDiscriminator = [
 export function createTxnBufferCreateInstruction(
   accounts: TxnBufferCreateInstructionAccounts,
   args: TxnBufferCreateInstructionArgs,
-  programId = new web3.PublicKey('C5tcDT7wb5PGNy6owoze5KofLN4XQw4CmFAGuba7a5My')
+  programId = new web3.PublicKey('superB6bzm82y1To5rRaMr7KmqkLNVnCUGwUBemtJV3')
 ) {
   const [data] = txnBufferCreateStruct.serialize({
     instructionDiscriminator: txnBufferCreateInstructionDiscriminator,

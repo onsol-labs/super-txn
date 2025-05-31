@@ -16,7 +16,6 @@ export async function superTransactionExecute({
   feePayer,
   creator,
   transactionIndex,
-  member,
   programId,
 }: {
   connection: Connection;
@@ -24,7 +23,6 @@ export async function superTransactionExecute({
   feePayer: PublicKey;
   creator: PublicKey;
   transactionIndex: number;
-  member: PublicKey;
   programId?: PublicKey;
 }): Promise<VersionedTransaction> {
   const { instruction, lookupTableAccounts } =

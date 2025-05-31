@@ -90,7 +90,7 @@ export class SuperTransaction implements SuperTransactionArgs {
    */
   static gpaBuilder(
     programId: web3.PublicKey = new web3.PublicKey(
-      'C5tcDT7wb5PGNy6owoze5KofLN4XQw4CmFAGuba7a5My'
+      'superB6bzm82y1To5rRaMr7KmqkLNVnCUGwUBemtJV3'
     )
   ) {
     return beetSolana.GpaBuilder.fromStruct(programId, superTransactionBeet)

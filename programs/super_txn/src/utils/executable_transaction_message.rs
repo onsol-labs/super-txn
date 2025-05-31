@@ -1,9 +1,4 @@
-use std::collections::HashMap;
-use std::convert::From;
-
 use anchor_lang::prelude::*;
-use anchor_lang::solana_program::address_lookup_table;
-use anchor_lang::solana_program::address_lookup_table::state::AddressLookupTable;
 use anchor_lang::solana_program::instruction::Instruction;
 use anchor_lang::solana_program::program::invoke_signed;
 
@@ -31,38 +26,37 @@ impl<'a, 'info> ExecutableTransactionMessage<'a, 'info> {
     pub fn new_validated(
         message: SuperTransactionMessage,
         message_account_infos: &'a [AccountInfo<'info>],
-        address_lookup_table_account_infos: &'a [AccountInfo<'info>],
         creator_key: &'a Pubkey,
         ephemeral_signer_pdas: &'a [Pubkey],
     ) -> Result<Self> {
         // CHECK: `address_lookup_table_account_infos` must be valid `AddressLookupTable`s
         //         and be the ones mentioned in `message.address_table_lookups`.
-        require_eq!(
-            address_lookup_table_account_infos.len(),
-            message.address_table_lookups.len(),
-            SuperTxnError::InvalidNumberOfAccounts
-        );
-        let lookup_tables: HashMap<&Pubkey, &AccountInfo> = address_lookup_table_account_infos
-            .iter()
-            .enumerate()
-            .map(|(index, maybe_lookup_table)| {
-                // The lookup table account must be owned by SolanaAddressLookupTableProgram.
-                require!(
-                    maybe_lookup_table.owner == &address_lookup_table::program::ID,
-                    SuperTxnError::InvalidAccount
-                );
-                // The lookup table must be mentioned in `message.address_table_lookups` at the same index.
-                require!(
-                    message
-                        .address_table_lookups
-                        .get(index)
-                        .map(|lookup| &lookup.account_key)
-                        == Some(maybe_lookup_table.key),
-                    SuperTxnError::InvalidAccount
-                );
-                Ok((maybe_lookup_table.key, maybe_lookup_table))
-            })
-            .collect::<Result<HashMap<&Pubkey, &AccountInfo>>>()?;
+        // require_eq!(
+        //     address_lookup_table_account_infos.len(),
+        //     message.address_table_lookups.len(),
+        //     SuperTxnError::InvalidNumberOfAccounts
+        // );
+        // let lookup_tables: HashMap<&Pubkey, &AccountInfo> = address_lookup_table_account_infos
+        //     .iter()
+        //     .enumerate()
+        //     .map(|(index, maybe_lookup_table)| {
+        //         // The lookup table account must be owned by SolanaAddressLookupTableProgram.
+        //         require!(
+        //             maybe_lookup_table.owner == &address_lookup_table::program::ID,
+        //             SuperTxnError::InvalidAccount
+        //         );
+        //         // The lookup table must be mentioned in `message.address_table_lookups` at the same index.
+        //         require!(
+        //             message
+        //                 .address_table_lookups
+        //                 .get(index)
+        //                 .map(|lookup| &lookup.account_key)
+        //                 == Some(maybe_lookup_table.key),
+        //             SuperTxnError::InvalidAccount
+        //         );
+        //         Ok((maybe_lookup_table.key, maybe_lookup_table))
+        //     })
+        //     .collect::<Result<HashMap<&Pubkey, &AccountInfo>>>()?;
 
         // CHECK: `account_infos` should exactly match the number of accounts mentioned in the message.
         require_eq!(
@@ -106,16 +100,16 @@ impl<'a, 'info> ExecutableTransactionMessage<'a, 'info> {
         let mut message_indexes_cursor = message.account_keys.len();
         for lookup in message.address_table_lookups.iter() {
             // This is cheap deserialization, it doesn't allocate/clone space for addresses.
-            let lookup_table_data = &lookup_tables
-                .get(&lookup.account_key)
-                .unwrap()
-                .data
-                .borrow()[..];
-            let lookup_table = AddressLookupTable::deserialize(lookup_table_data)
-                .map_err(|_| SuperTxnError::InvalidAccount)?;
+            // let lookup_table_data = &lookup_tables
+            //     .get(&lookup.account_key)
+            //     .unwrap()
+            //     .data
+            //     .borrow()[..];
+            // let lookup_table = AddressLookupTable::deserialize(lookup_table_data)
+            //     .map_err(|_| SuperTxnError::InvalidAccount)?;
 
             // Accounts listed as writable in lookup, should be loaded as writable.
-            for (i, index_in_lookup_table) in lookup.writable_indexes.iter().enumerate() {
+            for (i, _index_in_lookup_table) in lookup.writable_indexes.iter().enumerate() {
                 // Check the modifiers.
                 let index = message_indexes_cursor + i;
                 let loaded_account_info = &message_account_infos
@@ -127,37 +121,37 @@ impl<'a, 'info> ExecutableTransactionMessage<'a, 'info> {
                     SuperTxnError::InvalidAccount
                 );
                 // Check that the pubkey matches the one from the actual lookup table.
-                let pubkey_from_lookup_table = lookup_table
-                    .addresses
-                    .get(usize::from(*index_in_lookup_table))
-                    .ok_or(SuperTxnError::InvalidAccount)?;
-                require_keys_eq!(
-                    *loaded_account_info.key,
-                    *pubkey_from_lookup_table,
-                    SuperTxnError::InvalidAccount
-                );
+                // let pubkey_from_lookup_table = lookup_table
+                //     .addresses
+                //     .get(usize::from(*index_in_lookup_table))
+                //     .ok_or(SuperTxnError::InvalidAccount)?;
+                // require_keys_eq!(
+                //     *loaded_account_info.key,
+                //     *pubkey_from_lookup_table,
+                //     SuperTxnError::InvalidAccount
+                // );
 
                 writable_accounts.push(*loaded_account_info);
             }
             message_indexes_cursor += lookup.writable_indexes.len();
 
             // Accounts listed as readonly in lookup.
-            for (i, index_in_lookup_table) in lookup.readonly_indexes.iter().enumerate() {
+            for (i, _index_in_lookup_table) in lookup.readonly_indexes.iter().enumerate() {
                 // Check the modifiers.
                 let index = message_indexes_cursor + i;
                 let loaded_account_info = &message_account_infos
                     .get(index)
                     .ok_or(SuperTxnError::InvalidNumberOfAccounts)?;
                 // Check that the pubkey matches the one from the actual lookup table.
-                let pubkey_from_lookup_table = lookup_table
-                    .addresses
-                    .get(usize::from(*index_in_lookup_table))
-                    .ok_or(SuperTxnError::InvalidAccount)?;
-                require_keys_eq!(
-                    *loaded_account_info.key,
-                    *pubkey_from_lookup_table,
-                    SuperTxnError::InvalidAccount
-                );
+                // let pubkey_from_lookup_table = lookup_table
+                //     .addresses
+                //     .get(usize::from(*index_in_lookup_table))
+                //     .ok_or(SuperTxnError::InvalidAccount)?;
+                // require_keys_eq!(
+                //     *loaded_account_info.key,
+                //     *pubkey_from_lookup_table,
+                //     SuperTxnError::InvalidAccount
+                // );
 
                 readonly_accounts.push(*loaded_account_info);
             }

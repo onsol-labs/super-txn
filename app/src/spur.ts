@@ -6,8 +6,10 @@ import {
   TransactionMessage,
   VersionedTransaction,
   TransactionInstruction,
+  AddressLookupTableAccount,
   ComputeBudgetProgram,
   LAMPORTS_PER_SOL,
+  Connection,
 } from "@solana/web3.js";
 import type { JitoBundleSimulationResponse } from "./utils/jitoHandler";
 import { JupiterSwapRoute } from "./types/jup.types";
@@ -20,6 +22,9 @@ import { JitoHandler } from "./utils/jitoHandler";
 import logger from "./types/logger";
 import { fetchLookupTables, initializeLookupTableCacher } from "./utils/lookuptableCacher";
 import { bs58 } from "@coral-xyz/anchor/dist/cjs/utils/bytes";
+import { awaitTransactionSignatureConfirmationBlockhashV2 } from "./confirmTransaction";
+import { url } from "inspector";
+import { createAssociatedTokenAccountInstruction, createCloseAccountInstruction, createSyncNativeInstruction, getAssociatedTokenAddress, NATIVE_MINT } from "@solana/spl-token";
 
 let rpcUrl = process.env.RPC_URL || "";
 const keypair = Keypair.fromSecretKey(
@@ -74,84 +79,189 @@ export type SpurQuoteResponse = {
       program_id: string;
     }>;
     min_amount_out: string;
-    swaps: Array<any>;
+    swaps: Array<{
+      dex_id: string,
+      dex_last_update_slot: number,
+      dex_name: string,
+      edge_last_update_slot: number,
+      edge_last_update_time_ms: string,
+      quote_output_amount: string,
+      swap_input_amount: string,
+      swap_input_mint: string,
+      swap_output_amount: string,
+      swap_output_mint: string
+    }>;
   }>;
 };
 
-const getCoinQuote = async (
-  inputMint: string,
-  outputMint: string,
-  amount: string,
-  swapMode: string = "ExactIn",
-  excludeWhirlPool: boolean
-) => {
-  const url = new URL("https://lite-api.jup.ag/swap/v1/quote");
-  url.searchParams.set("outputMint", outputMint);
-  url.searchParams.set("inputMint", inputMint);
-  url.searchParams.set("amount", amount);
-  url.searchParams.set("swapMode", swapMode);
-  url.searchParams.set("onlyDirectRoutes", "true");
-  // url.searchParams.set("autoSlippage", "true");
-  url.searchParams.set("slippageBps", "1");
-  if (excludeWhirlPool) {
-    url.searchParams.set("excludeDexes", "Whirlpool");
-  } else {
-    url.searchParams.set("excludeDexes", "Obric V2,SolFi,Stabble Stable Swap");
+export async function getSpurQuote(
+  params: SpurSwapParams,
+): Promise<SpurQuoteResponse> {
+  const url = new URL(SPUR_API_BASE);
+  url.searchParams.set("amount_in", params.amount_in);
+  url.searchParams.set("mint_in", params.mint_in);
+  url.searchParams.set("mint_out", params.mint_out);
+  url.searchParams.set("payer_pk", params.payer_pk);
+  if (params.encoded_bytes_limit) {
+    url.searchParams.set("encoded_bytes_limit", params.encoded_bytes_limit);
   }
-
   const response = await fetch(url.toString());
-
   if (!response.ok) {
-    throw new Error(`HTTP error! status: ${response.status}`);
+    throw new Error(
+      `Spur API error: ${response.status} ${response.statusText}`,
+    );
   }
+  const responseJson = await response.json();
+  // console.log("responseJson", JSON.stringify(responseJson, null, 2))
+  return responseJson as SpurQuoteResponse;
+}
 
-  return (await response.json()) as JupiterSwapRoute;
-};
-
-const getTransaction = async (
-  quoteResponse: JupiterSwapRoute,
-  publicKey: PublicKey
+const getSpurTransaction = async (
+  quoteResponse: SpurQuoteResponse["quotes"],
+  payer: PublicKey,
+  firstIx: boolean
 ) => {
-  const url = new URL("https://quote-api.jup.ag/v6/swap-instructions");
-  const response = await fetch(url.toString(), {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      quoteResponse,
-      userPublicKey: publicKey.toString(),
-    }),
-  });
+  if (
+    !quoteResponse[0] ||
+    !quoteResponse[0].swaps
+  ) {
+    // console.log(quoteResponse)
+    throw new Error("Invalid quote response");
+  }
+  const txInstructions = []
+  const firstQuote = quoteResponse[0]
+  // console.log("firstQuote", JSON.stringify(firstQuote.swaps, null, 2))
+  txInstructions.push(spurInstructionsToTransactionInstructions(
+    firstQuote.instructions[0],
+  ));
+  const setupInstructions: TransactionInstruction[] = [];
+  const cleanupInstructions: TransactionInstruction[] = [];
+  const amountIn = Number(firstQuote.swaps[0].swap_input_amount)
+  // console.log("AMOUNT IN", amountIn)
+  if (firstQuote.swaps[0].swap_input_mint === SOL_MINT) {
+    const { instructions: wrapInstructions, wSolAta } = await wrapSol(
+      connection,
+      payer,
+      Math.ceil(amountIn * 1.1),
+    );
+    setupInstructions.push(...wrapInstructions);
+    cleanupInstructions.push(
+      unwrapSol(
+        payer,
+        wSolAta
+      ),
+    );
+  }
+  const lutsSet = new Set(firstQuote.alts)
+  const secondQuote = quoteResponse[1]
+  if (secondQuote) {
 
-  if (!response.ok) {
-    throw new Error(`HTTP error! status: ${response.status}`);
+    const secondQuoteLutsSet = new Set(secondQuote.alts)
+    for (const l of secondQuoteLutsSet) {
+      if (!lutsSet.has(l)) {
+        lutsSet.add(l)
+      }
+    }
+    if (secondQuote.swaps[1].swap_input_mint != SOL_MINT) {
+      if (firstIx) {
+        console.log("ADDING SECOND INSTRUCTION")
+        const secondTxInstructions = spurInstructionsToTransactionInstructions(
+          secondQuote.instructions[0]
+        );
+        txInstructions.push(secondTxInstructions)
+
+      }
+    }
   }
 
-  return await response.json();
+  const luts = Array.from(lutsSet)
+  return { txInstructions, setupInstructions, cleanupInstructions, luts };
 };
 
-async function createTokenConversionRoute(
+
+export function spurInstructionsToTransactionInstructions(
+  ix: SpurQuoteResponse["quotes"][0]["instructions"][number],
+): TransactionInstruction {
+  return new TransactionInstruction({
+    keys: ix.accounts.map((acc) => ({
+      pubkey: new PublicKey(acc.pubkey),
+      isSigner: acc.is_signer,
+      isWritable: acc.is_writable,
+    })),
+    programId: new PublicKey(ix.program_id),
+    data: Buffer.from(ix.data),
+  })
+}
+
+async function wrapSol(
+  connection: Connection,
+  wallet: PublicKey,
+  amount: number,
+): Promise<{ wSolAta: PublicKey; instructions: TransactionInstruction[] }> {
+  const wSolAta = await getAssociatedTokenAddress(
+    NATIVE_MINT,
+    wallet,
+  );
+  const wSolAtaExists = await connection.getAccountInfo(wSolAta);
+  const wrapInstructions = [
+    wSolAtaExists
+      ? null
+      : createAssociatedTokenAccountInstruction(
+        wallet,
+        wSolAta,
+        wallet,
+        NATIVE_MINT,
+      ),
+    SystemProgram.transfer({
+      fromPubkey: wallet,
+      toPubkey: wSolAta,
+      lamports: amount,
+    }),
+    createSyncNativeInstruction(wSolAta),
+  ];
+  return {
+    wSolAta,
+    instructions: wrapInstructions.filter(
+      (ix) => ix !== null,
+    ) as TransactionInstruction[],
+  };
+}
+
+function unwrapSol(
+  wallet: PublicKey,
+  tokenAccount: PublicKey,
+): TransactionInstruction {
+  const unwrapInstruction = createCloseAccountInstruction(
+    tokenAccount,
+    wallet,
+    wallet,
+  );
+  return unwrapInstruction;
+}
+
+async function createTokenConversionRouteSpur(
   tokens: string[],
   initialAmount: string | number
 ) {
   const routes: any[] = [];
   let currentAmount = initialAmount.toString();
-  let excludeWhirlPool = false
-
   for (let i = 0; i < tokens.length; i++) {
     const fromToken = tokens[i];
     const toToken = tokens[(i + 1) % tokens.length];
 
     try {
-      const conversion = await getCoinQuote(fromToken, toToken, currentAmount, "ExactIn", excludeWhirlPool);
+      const conversion = await getSpurQuote({
+        amount_in: currentAmount,
+        mint_in: fromToken,
+        mint_out: toToken,
+        payer_pk: feePayer.toString(),
+        encoded_bytes_limit: "10000"
+      });
       routes.push(conversion);
-      logger.info(`${conversion.routePlan[0].swapInfo.label} ${fromToken.slice(0, 6)} to ${toToken.slice(0, 6)} ${conversion.outAmount}`);
-      if (conversion.routePlan[0].swapInfo.label === "Whirlpool") {
-        excludeWhirlPool = true
-      }
+      logger.info(`${conversion.quotes[0].swaps[0].dex_name} ${fromToken.slice(0, 6)} to ${conversion.quotes[0].swaps[1].dex_name} ${toToken.slice(0, 6)} ${conversion.quotes[0].min_amount_out}`);
+
       // Update current amount for next iteration
-      currentAmount = conversion.outAmount;
+      currentAmount = conversion.quotes[0].min_amount_out;
     } catch (error) {
       console.error(`Error converting from ${fromToken} to ${toToken}:`, error);
       throw error;
@@ -160,13 +270,12 @@ async function createTokenConversionRoute(
 
   return { routes, currentAmount };
 }
-
 (async () => {
   // initial 0.1 sol for quote
-  const initial = 0.5 * LAMPORTS_PER_SOL;
+  const initial = 0.1 * LAMPORTS_PER_SOL;
   const jitoTipAmount = 0.00002 * LAMPORTS_PER_SOL;
   const jitoTipAmount2 = 0.0001 * LAMPORTS_PER_SOL;
-  const amountIn = initial + jitoTipAmount2;
+  const amountIn = initial + jitoTipAmount;
   let bufferIndex = 0;
   const cacher = await initializeLookupTableCacher();
 
@@ -180,10 +289,10 @@ async function createTokenConversionRoute(
       [SOL_MINT, USDC_MINT],
       [SOL_MINT, USDT_MINT],
       [SOL_MINT, USDC_MINT, USDT_MINT],
-      [SOL_MINT, USDT_MINT, USDC_MINT],
-      [SOL_MINT, USDT_MINT, SOL_MINT, USDC_MINT],
-      // [SOL_MINT, JUP_MINT],
-      // [SOL_MINT, WIF_MINT],
+      // [SOL_MINT, USDT_MINT, USDC_MINT],
+      // [SOL_MINT, USDT_MINT, SOL_MINT, USDC_MINT],
+      [SOL_MINT, JUP_MINT],
+      [SOL_MINT, WIF_MINT],
       // [SOL_MINT, JUP_MINT, USDC_MINT],
       // [SOL_MINT, BONK_MINT, USDC_MINT, ME_MINT, USDC_MINT],
       // [SOL_MINT, BONK_MINT, USDC_MINT],
@@ -193,11 +302,10 @@ async function createTokenConversionRoute(
     // Randomly select a token configuration
     const tokens = tokenSets[Math.floor(Math.random() * tokenSets.length)];
 
-    let { routes, currentAmount } = await createTokenConversionRoute(
+    let { routes, currentAmount } = await createTokenConversionRouteSpur(
       tokens,
       initial
     );
-
 
     // when outAmount more than initial
     if (Number(currentAmount) > amountIn) {
@@ -205,35 +313,29 @@ async function createTokenConversionRoute(
         let mainInstructions = [];
 
         const addressLookupTableAccountKeys: PublicKey[] = [];
+        let setupInstructions: TransactionInstruction[] = [];
+        let cleanupInstructions: TransactionInstruction[] = [];
         for (const route of routes) {
-          const instructions: any = await getTransaction(route, feePayer);
-          const {
-            setupInstructions,
-            swapInstruction: swapInstructionPayload,
-            cleanupInstruction,
-            addressLookupTableAddresses,
-          } = instructions;
-          addressLookupTableAccountKeys.push(addressLookupTableAddresses.map((keys: string) => new PublicKey(keys)))
-
-          if (setupInstructions) {
-            mainInstructions.push(
-              ...setupInstructions.map(deserializeInstruction)
-            );
+          const i = routes.indexOf(route)
+          const { txInstructions, setupInstructions: setupInstructions_, cleanupInstructions: cleanupInstructions_, luts } = await getSpurTransaction(route.quotes, feePayer, i == 0);
+          addressLookupTableAccountKeys.push(...luts.map((keys: string) => new PublicKey(keys)))
+          mainInstructions.push(...txInstructions)
+          if (setupInstructions.length == 0) {
+            setupInstructions.push(...setupInstructions_)
           }
-
-          mainInstructions.push(deserializeInstruction(swapInstructionPayload));
-
-          if (cleanupInstruction) {
-            mainInstructions.push(deserializeInstruction(cleanupInstruction));
+          if (cleanupInstructions.length == 0) {
+            cleanupInstructions.push(...cleanupInstructions_)
           }
         }
-
+        mainInstructions.unshift(...setupInstructions)
+        mainInstructions.push(...cleanupInstructions)
         const addressLookupTableAccounts = await fetchLookupTables(
           cacher,
           connection,
           addressLookupTableAccountKeys.flat()
         );
 
+        // console.log(addressLookupTableAccounts)
         logger.info(`totalInstructions: ${mainInstructions.length}`)
         logger.info(`addressLookupTableAccounts: ${addressLookupTableAccounts.length}`)
         let rawUnserializedTxns = [];
@@ -244,6 +346,25 @@ async function createTokenConversionRoute(
           recentBlockhash: PublicKey.default.toString(),
           instructions: mainInstructions,
         });
+        // const extendTx = new VersionedTransaction(
+        //   mainTransferMessage.compileToV0Message(addressLookupTableAccounts)
+        // );
+        // extendTx.sign([keypair]);
+        // const txid = await connection.sendRawTransaction(extendTx.serialize(), {
+        //   skipPreflight: true,
+        // });
+        // console.log(`Transaction sent with id ${txid}`);
+
+        // Optionally: Confirm transaction
+        // await connection.confirmTransaction(txid);
+        // const simulation = await connection.simulateTransaction(
+        //   extendTx,
+        //   {
+        //     commitment: "confirmed", 
+        //     replaceRecentBlockhash: true, 
+        //   }
+        // );
+        // console.log(simulation.value)
         const messageBuffer =
           superTxn.utils.transactionMessageToSuperTransactionMessageBytes({
             message: mainTransferMessage,
@@ -281,7 +402,7 @@ async function createTokenConversionRoute(
         );
 
         const jitoHandler = new JitoHandler({
-          baseUrl: process.env.JITO_URL || undefined,
+          baseUrl: process.env.JITO_URL || "",
         });
         const jitoTip = SystemProgram.transfer({
           fromPubkey: feePayer,
@@ -407,7 +528,7 @@ async function createTokenConversionRoute(
         executeTx.sign([keypair]);
         rawUnserializedTxns.push(executeTx);
         const serializedTxns = rawUnserializedTxns.map((versionedTransaction) => versionedTransaction.serialize());
-        // const signatures = rawUnserializedTxns.map((versionedTransaction) => versionedTransaction.signatures[0])
+        const signatures = rawUnserializedTxns.map((versionedTransaction) => versionedTransaction.signatures[0])
         // console.log("signatures", signatures.map((signature) => bs58.encode(signature)))
 
         // --- Helper function for simulation + send ---
@@ -417,6 +538,7 @@ async function createTokenConversionRoute(
           includeAccounts?: Array<PublicKey>
         ): Promise<{ simulation: JitoBundleSimulationResponse | null, bundleId?: string, totalComputeUnits?: number }> {
           const simulation = await jitoHandler.simulateBundle(txns, includeAccounts);
+          // console.log("simulation", JSON.stringify(simulation.value.transactionResults, null, 2))
           if (simulation.value.summary === "succeeded") {
             const totalComputeUnits = simulation.value.transactionResults.reduce(
               (acc, tx) => acc + tx.unitsConsumed, 0
@@ -437,7 +559,7 @@ async function createTokenConversionRoute(
         if (!simulationResult.totalComputeUnits) {
           // Already logged reason for ignoring
           await new Promise((resolve) => setTimeout(resolve, 4000))
-          continue;
+          return;
         }
 
         // // --- Helper: Rebuild transactions with measured compute units ---

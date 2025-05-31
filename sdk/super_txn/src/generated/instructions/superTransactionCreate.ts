@@ -71,7 +71,7 @@ export const superTransactionCreateInstructionDiscriminator = [
 export function createSuperTransactionCreateInstruction(
   accounts: SuperTransactionCreateInstructionAccounts,
   args: SuperTransactionCreateInstructionArgs,
-  programId = new web3.PublicKey('C5tcDT7wb5PGNy6owoze5KofLN4XQw4CmFAGuba7a5My')
+  programId = new web3.PublicKey('superB6bzm82y1To5rRaMr7KmqkLNVnCUGwUBemtJV3')
 ) {
   const [data] = superTransactionCreateStruct.serialize({
     instructionDiscriminator: superTransactionCreateInstructionDiscriminator,

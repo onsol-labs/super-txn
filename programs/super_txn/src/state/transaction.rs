@@ -14,9 +14,6 @@ use super::TransactionMessage;
 pub struct SuperTransaction {
     /// SuperTransaction creator
     pub creator: Pubkey,
-    // Index of this transaction within the bundle. (0 if it is not)
-    // future releases maybe??
-    // pub index: u64,
     /// Derivation bumps for additional signers.
     /// Some transactions require multiple signers. Often these additional signers are "ephemeral" keypairs
     /// that are generated on the client with a sole purpose of signing the transaction and be discarded immediately after.

@@ -9,7 +9,7 @@ pub mod errors;
 pub mod state;
 pub mod utils;
 
-declare_id!("C5tcDT7wb5PGNy6owoze5KofLN4XQw4CmFAGuba7a5My");
+declare_id!("superB6bzm82y1To5rRaMr7KmqkLNVnCUGwUBemtJV3");
 
 #[program]
 pub mod super_txn {
@@ -471,19 +471,17 @@ impl SuperTransactionExecute<'_> {
             let transaction = transaction.take();
 
             let transaction_key = ctx.accounts.transaction.key();
-            let creator_key = ctx.accounts.transaction.key();
-
+            let creator = &ctx.accounts.creator;
+            let creator_key = creator.key();
             let transaction_message = transaction.message;
-            let num_lookups = transaction_message.address_table_lookups.len();
+            // let num_lookups = transaction_message.address_table_lookups.len();
 
             let message_account_infos = ctx
-                .remaining_accounts
-                .get(num_lookups..)
-                .ok_or(SuperTxnError::InvalidNumberOfAccounts)?;
-            let address_lookup_table_account_infos = ctx
-                .remaining_accounts
-                .get(..num_lookups)
-                .ok_or(SuperTxnError::InvalidNumberOfAccounts)?;
+                .remaining_accounts;
+            // let address_lookup_table_account_infos = ctx
+            //     .remaining_accounts
+            //     .get(..num_lookups)
+            //     .ok_or(SuperTxnError::InvalidNumberOfAccounts)?;
 
             let (ephemeral_signer_keys, ephemeral_signer_seeds) =
                 derive_ephemeral_signers(transaction_key, &transaction.ephemeral_signer_bumps);
@@ -491,7 +489,6 @@ impl SuperTransactionExecute<'_> {
             let executable_message = ExecutableTransactionMessage::new_validated(
                 transaction_message,
                 message_account_infos,
-                address_lookup_table_account_infos,
                 &creator_key,
                 &ephemeral_signer_keys,
             )?;

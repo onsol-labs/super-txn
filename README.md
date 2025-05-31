@@ -44,7 +44,7 @@ The Super Transaction program allows users to:
 ## Program ID
 ```
 mainnet: None
-localnet: C5tcDT7wb5PGNy6owoze5KofLN4XQw4CmFAGuba7a5My
+localnet: superB6bzm82y1To5rRaMr7KmqkLNVnCUGwUBemtJV3
 ```
 
 ## Compiling and testing

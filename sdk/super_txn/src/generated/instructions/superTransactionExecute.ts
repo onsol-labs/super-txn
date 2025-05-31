@@ -22,8 +22,8 @@ export const superTransactionExecuteStruct = new beet.BeetArgsStruct<{
 /**
  * Accounts required by the _superTransactionExecute_ instruction
  *
- * @property [] transaction
- * @property [**signer**] creator
+ * @property [_writable_] transaction
+ * @property [_writable_, **signer**] creator
  * @category Instructions
  * @category SuperTransactionExecute
  * @category generated
@@ -48,7 +48,7 @@ export const superTransactionExecuteInstructionDiscriminator = [
  */
 export function createSuperTransactionExecuteInstruction(
   accounts: SuperTransactionExecuteInstructionAccounts,
-  programId = new web3.PublicKey('C5tcDT7wb5PGNy6owoze5KofLN4XQw4CmFAGuba7a5My')
+  programId = new web3.PublicKey('superB6bzm82y1To5rRaMr7KmqkLNVnCUGwUBemtJV3')
 ) {
   const [data] = superTransactionExecuteStruct.serialize({
     instructionDiscriminator: superTransactionExecuteInstructionDiscriminator,

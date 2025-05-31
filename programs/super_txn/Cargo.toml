@@ -15,6 +15,7 @@ cpi = ["no-entrypoint"]
 no-entrypoint = []
 no-idl = []
 no-log-ix-name = []
+anchor-debug = []
 
 [dependencies]
 anchor-lang = "0.29.0"

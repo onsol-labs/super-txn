@@ -4,14 +4,14 @@
 resolution = true
 skip-lint = false
 
-[programs.localnet]
-super_txn = "C5tcDT7wb5PGNy6owoze5KofLN4XQw4CmFAGuba7a5My"
+[programs.mainnet]
+super_txn = "superB6bzm82y1To5rRaMr7KmqkLNVnCUGwUBemtJV3"
 
 [registry]
 url = "https://api.apr.dev"
 
 [provider]
-cluster = "Localnet"
+cluster = "mainnet"
 wallet = "~/.config/solana/id.json"
 
 [scripts]

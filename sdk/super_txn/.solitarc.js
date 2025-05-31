@@ -17,7 +17,7 @@ const ignoredTypes = new Set([
 module.exports = {
   idlGenerator: "anchor",
   programName: PROGRAM_NAME,
-  programId: "C5tcDT7wb5PGNy6owoze5KofLN4XQw4CmFAGuba7a5My",
+  programId: "superB6bzm82y1To5rRaMr7KmqkLNVnCUGwUBemtJV3",
   idlDir,
   sdkDir,
   binaryInstallDir,

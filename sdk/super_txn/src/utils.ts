@@ -180,11 +180,11 @@ export async function accountsForTransactionExecute({
   // Populate account metas required for execution of the transaction.
   const accountMetas: AccountMeta[] = [];
   // First add the lookup table accounts used by the transaction. They are needed for on-chain validation.
-  accountMetas.push(
-    ...addressLookupTableKeys.map((key) => {
-      return { pubkey: key, isSigner: false, isWritable: false };
-    })
-  );
+  // accountMetas.push(
+  //   ...addressLookupTableKeys.map((key) => {
+  //     return { pubkey: key, isSigner: false, isWritable: false };
+  //   })
+  // );
   // Then add static account keys included into the message.
   for (const [accountIndex, accountKey] of message.accountKeys.entries()) {
     accountMetas.push({
@@ -288,6 +288,7 @@ export function transactionMessageToSuperTransactionMessage({
       compiledMessage.header.numRequiredSignatures -
       compiledMessage.header.numReadonlyUnsignedAccounts,
     accountKeys: compiledMessage.staticAccountKeys,
+    // @ts-ignore
     instructions: compiledMessage.compiledInstructions.map((ix) => {
       return {
         programIdIndex: ix.programIdIndex,
@@ -295,6 +296,7 @@ export function transactionMessageToSuperTransactionMessage({
         data: Array.from(ix.data),
       };
     }),
+    // @ts-ignore
     addressTableLookups: compiledMessage.addressTableLookups,
   };
 

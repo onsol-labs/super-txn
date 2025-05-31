@@ -3,12 +3,10 @@ import { SuperTxn, IDL } from "./types/super_txn";
 import * as superTxn from "super_txn";
 import { createTestTransferInstruction, generateFundedKeypair } from "./utils";
 import {
-  AccountMeta,
   Keypair,
   LAMPORTS_PER_SOL,
   PublicKey,
   SystemProgram,
-  Transaction,
   TransactionMessage,
   VersionedTransaction,
   ComputeBudgetProgram,
@@ -242,6 +240,7 @@ describe("super_txn", () => {
       connection,
       creator: creator.publicKey,
       transactionIndex: 0,
+      amountIn: 0,
       programId,
     });
 

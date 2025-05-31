@@ -39,7 +39,6 @@ export async function superTransactionExecute({
     feePayer: feePayer.publicKey,
     creator,
     transactionIndex,
-    member,
     programId,
   });
 

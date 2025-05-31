@@ -1,5 +1,5 @@
 import * as anchor from "@coral-xyz/anchor";
-import { SuperTxn, IDL } from "./types/super_txn";
+import { SuperTxn, IDL } from "../types/super_txn";
 import * as superTxn from "super_txn";
 import "dotenv/config";
 import {
@@ -14,7 +14,6 @@ import {
 import { bs58 } from "@coral-xyz/anchor/dist/cjs/utils/bytes";
 import NodeWallet from "@coral-xyz/anchor/dist/cjs/nodewallet";
 import * as crypto from "crypto";
-import { JitoHandler } from "./jitoHandler";
 
 export function createTestTransferInstruction(
   authority: PublicKey,
@@ -45,6 +44,7 @@ export function createTestTransferInstruction(
   const connection = program.provider.connection;
   const feePayer = program.provider.publicKey;
   const dev = new PublicKey("");
+  // you could insert any instructions here.
   const testIx = createTestTransferInstruction(
     feePayer,
     dev,
@@ -53,7 +53,7 @@ export function createTestTransferInstruction(
 
   let instructions = [];
   let bufferIndex = 0;
-  // Add 48 transfer instructions to the message.
+  // Add 45 transfer instructions to the message.
   for (let i = 0; i <= 45; i++) {
     instructions.push(testIx);
   }
@@ -63,11 +63,12 @@ export function createTestTransferInstruction(
     recentBlockhash: PublicKey.default.toString(),
     instructions: instructions,
   });
-  const test = testTransferMessage.compileToLegacyMessage();
+
   // Serialize the message. Must be done with this util function
   const messageBuffer =
     superTxn.utils.transactionMessageToSuperTransactionMessageBytes({
       message: testTransferMessage,
+      // add luts
       addressLookupTableAccounts: [],
     });
 
@@ -103,75 +104,65 @@ export function createTestTransferInstruction(
     } as superTxn.generated.TxnBufferCreateInstructionArgs
   );
 
-  const jitoHandler = new JitoHandler();
-  const jitoTip = createTestTransferInstruction(
-    feePayer,
-    jitoHandler.getRandomTipAccount(),
-    0.0001 * LAMPORTS_PER_SOL
-  );
-  const message = new TransactionMessage({
-    payerKey: feePayer,
-    recentBlockhash: (await connection.getLatestBlockhash("finalized"))
-      .blockhash,
-    instructions: [ix, jitoTip],
-  }).compileToV0Message();
+  // const jitoHandler = new JitoHandler();
+  // const jitoTip = createTestTransferInstruction(
+  //   feePayer,
+  //   jitoHandler.getRandomTipAccount(),
+  //   0.00001 * LAMPORTS_PER_SOL
+  // );
+  // const message = new TransactionMessage({
+  //   payerKey: feePayer,
+  //   recentBlockhash: (await connection.getLatestBlockhash("finalized"))
+  //     .blockhash,
+  //   instructions: [ix],
+  // }).compileToV0Message();
 
-  const firstTxn = new VersionedTransaction(message);
+  // const firstTxn = new VersionedTransaction(message);
 
-  firstTxn.sign([keypair]);
+  // firstTxn.sign([keypair]);
+  // const sig = await connection.sendRawTransaction(firstTxn.serialize());
+  // await connection.confirmTransaction(sig, "confirmed");
 
-  //   const simulation = await connection.simulateTransaction(tx);
-  // //   console.log(simulation);
-  // Send first transaction.
-  // const signature = await connection.sendTransaction(tx);
-  // await connection.confirmTransaction(signature);
-  // console.log(signature)
+  // const CHUNK_SIZE = 700; // Safe chunk size for buffer extension
+  // const numChunks = Math.ceil(messageBuffer.length / CHUNK_SIZE);
+  // for (let i = 1; i < numChunks; i++) {
+  //   const start = i * CHUNK_SIZE;
+  //   const end = Math.min(start + CHUNK_SIZE, messageBuffer.length);
+  //   const chunk = messageBuffer.slice(start, end);
 
-  const secondSlice = messageBuffer.slice(700, messageBuffer.byteLength);
-  // console.log(secondSlice.length)
+  //   const extendIx =
+  //     superTxn.generated.createTxnBufferExtendInstruction(
+  //       {
+  //         transactionBuffer,
+  //         creator: feePayer,
+  //       },
+  //       {
+  //         args: {
+  //           buffer: chunk,
+  //         } as superTxn.generated.TransactionBufferExtendArgs,
+  //       } as superTxn.generated.TxnBufferExtendInstructionArgs,
+  //       programId
+  //     );
 
-  // Extned the buffer.
-  const secondIx = superTxn.generated.createTxnBufferExtendInstruction(
-    {
-      transactionBuffer,
-      creator: feePayer,
-    },
-    {
-      args: {
-        buffer: secondSlice,
-      } as superTxn.generated.TransactionBufferExtendArgs,
-    } as superTxn.generated.TxnBufferExtendInstructionArgs
-  );
+  //   const extendTx = new VersionedTransaction(
+  //     new TransactionMessage({
+  //       payerKey: feePayer,
+  //       recentBlockhash: (await connection.getLatestBlockhash()).blockhash,
+  //       instructions: [extendIx],
+  //     }).compileToV0Message()
+  //   );
+  //   extendTx.sign([keypair]);
+  //   const sig = await connection.sendRawTransaction(extendTx.serialize());
+  //   await connection.confirmTransaction(sig, "confirmed");
+  // }
 
-  const secondMessage = new TransactionMessage({
-    payerKey: feePayer,
-    recentBlockhash: (await connection.getLatestBlockhash()).blockhash,
-    instructions: [secondIx],
-  }).compileToV0Message();
-
-  const secondTx = new VersionedTransaction(secondMessage);
-
-  secondTx.sign([keypair]);
-
-  // Send second transaction to extend.
-  //   const secondSignature = await connection.sendTransaction(secondTx);
-
-  // const simulation = await connection.simulateTransaction(secondTx);
-  // console.log(simulation)
-  //   await connection.confirmTransaction(secondSignature);
-
-  // Final chunk uploaded. Check that length is as expected.
-  //   console.log(txBufferDeser2.buffer.length)
-
-  // // Derive super transaction PDA.
   const [transactionPda] = superTxn.getTransactionPda({
     creator: feePayer,
-    index: 0,
+    index: bufferIndex,
+    programId,
   });
 
-  //   const transactionAccountInfo = await connection.getAccountInfo(transactionPda);
-
-  //   Create final instruction.
+  // //   Create final instruction.
   const thirdIx =
     superTxn.generated.createSuperTransactionCreateFromBufferInstruction(
       {
@@ -208,21 +199,21 @@ export function createTestTransferInstruction(
   // const simulation = await connection.simulateTransaction(thirdTx);
   // console.log(simulation);
   //   Send final transaction.
-  //   const thirdSignature = await connection.sendRawTransaction(
-  //     thirdTx.serialize(),
-  //     {
-  //       skipPreflight: true,
-  //     }
-  //   );
+  // const thirdSignature = await connection.sendRawTransaction(
+  //   thirdTx.serialize(),
+  //   {
+  //     skipPreflight: true,
+  //   }
+  // );
 
-  //   await connection.confirmTransaction(
-  //     {
-  //       signature: thirdSignature,
-  //       blockhash: blockhash.blockhash,
-  //       lastValidBlockHeight: blockhash.lastValidBlockHeight,
-  //     },
-  //     "confirmed"
-  //   );
+  // await connection.confirmTransaction(
+  //   {
+  //     signature: thirdSignature,
+  //     blockhash: blockhash.blockhash,
+  //     lastValidBlockHeight: blockhash.lastValidBlockHeight,
+  //   },
+  //   "confirmed"
+  // );
 
   //   const transactionInfo =
   //     await superTxn.accounts.SuperTransaction.fromAccountAddress(
@@ -231,17 +222,20 @@ export function createTestTransferInstruction(
   //     );
   //   console.log(transactionInfo)
 
-  const executeIx = await superTxn.instructions.bundledSuperTransactionExecute({
+  const executeIx = await superTxn.instructions.superTransactionExecute({
     connection,
     creator: feePayer,
-    fromPubkey: feePayer,
-    toPubkey: dev,
+    // fromPubkey: feePayer,
+    // toPubkey: dev,
     transactionIndex: 0,
     programId,
   });
 
   const requestHeapIx = ComputeBudgetProgram.requestHeapFrame({
     bytes: 262144,
+  });
+  const computeBudgetIxn = ComputeBudgetProgram.setComputeUnitLimit({
+    units: 500_000,
   });
   const executeMessage = new TransactionMessage({
     payerKey: feePayer,
@@ -253,32 +247,22 @@ export function createTestTransferInstruction(
 
   executeTx.sign([keypair]);
 
-  //   const simulationtwo = await connection.simulateTransaction(executeTx);
-  //   console.log(simulationtwo)
+  // const simulationtwo = await connection.simulateTransaction(executeTx);
+  // console.log(simulationtwo);
   // Send final transaction.
-  //   const executeSignature = await connection.sendRawTransaction(
-  //     executeTx.serialize(),
-  //     {
-  //       skipPreflight: true,
-  //     }
-  //   );
-
-  //   await connection.confirmTransaction(
-  //     {
-  //       signature: executeSignature,
-  //       blockhash: blockhash.blockhash,
-  //       lastValidBlockHeight: blockhash.lastValidBlockHeight,
-  //     },
-  //     "confirmed"
-  //   );
-  const jitoBundle = await jitoHandler.sendBundle([
-    firstTxn.serialize(),
-    secondTx.serialize(),
-    thirdTx.serialize(),
+  const executeSignature = await connection.sendRawTransaction(
     executeTx.serialize(),
-  ]);
-  console.log(jitoBundle);
+    {
+      skipPreflight: true,
+    }
+  );
 
-  const confirmJito = await jitoHandler.confirmInflightBundle(jitoBundle)
-  console.log(confirmJito)
+  await connection.confirmTransaction(
+    {
+      signature: executeSignature,
+      blockhash: blockhash.blockhash,
+      lastValidBlockHeight: blockhash.lastValidBlockHeight,
+    },
+    "confirmed"
+  );
 })();
