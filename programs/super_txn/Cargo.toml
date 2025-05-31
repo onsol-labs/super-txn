@@ -19,4 +19,5 @@ anchor-debug = []
 
 [dependencies]
 anchor-lang = "0.29.0"
+default-env = "0.1.1"
 solana-security-txt = "1.1.1"
